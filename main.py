@@ -34,7 +34,7 @@ def region_growing(image, seed_point, threshold=10):
     return mask
 
 # Load the image
-img = cv2.imread(r"C:\Users\Roman\Desktop\Unterlagen\5.(Auslands) Semester\Vorlesungen\Medical Image Analysis -\FinalProject\iStock-2153124511-696x464.jpg")
+img = cv2.imread("iStock-2153124511-696x464.jpg")
 img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert to RGB for correct color display
 img_gray = rgb2gray(img)  # Convert to grayscale for processing
 
