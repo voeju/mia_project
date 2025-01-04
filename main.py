@@ -132,11 +132,9 @@ for path in paths:
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert to RGB for correct color display
     img_gray = rgb2gray(img)  # Convert to grayscale for processing
 
+    # Get iris only image
     iris_mask = get_iris_mask(img_gray)
-
     roi = img_rgb * np.stack([iris_mask] * 3, axis=-1) 
-    
-    calculate_eye_freckle_area(roi)
 
     # Display the result
     fig, ax = plt.subplots(1, 2, figsize=(16, 7))
@@ -150,4 +148,8 @@ for path in paths:
 
     plt.tight_layout()
     plt.show()
+    
+    # Segment freckles and calculate percentual area
+    calculate_eye_freckle_area(roi)
+
 
