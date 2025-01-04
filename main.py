@@ -82,7 +82,7 @@ def get_iris_mask(image, radius=120):
     return iris_mask - pupil_mask
 
 #assuming the input is rgb iris image with all of the other regions set to white
-def calculate_eye_freckle_area(image):
+def calculate_eye_freckle_area(image, iris_mask):
     # Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -95,34 +95,28 @@ def calculate_eye_freckle_area(image):
     cv2.imshow('Thresholded Image', thresholded)
     cv2.waitKey(0)
 
-    # Morphological operations
-    kernel = np.ones((3, 3), np.uint8)
-    morphed = cv2.morphologyEx(thresholded, cv2.MORPH_CLOSE, kernel, iterations=2)
+    freckles_area = np.sum(thresholded == 255) - np.sum(iris_mask == 0)
+    print(f"Total area of white freckles: {freckles_area} pixels")
+    freckles_img = image.copy()
+    freckles_img[thresholded == 0] = [0,0,0] 
 
-    # Find contours
-    contours, _ = cv2.findContours(morphed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    # Print number of contours found
-    print(f"Number of contours found: {len(contours)}")
-
-    # Draw and display contours on the original image
-    contour_image = image.copy()
-    cv2.drawContours(contour_image, contours, -1, (0, 255, 0), 2)
-    cv2.imshow('Contours', contour_image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-    # Calculate freckles area
-    freckles_area = sum(cv2.contourArea(contour) for contour in contours)
-    print(f"Total freckles area: {freckles_area}")
-
-    # Calculate iris area
-    iris_area = np.sum(gray < 255)
-    print(f"Iris area: {iris_area}")
+    iris_area = np.sum(iris_mask == 1)
+    print(f"Total area of iris: {iris_area} pixels")
 
     # Calculate percentage
     freckles_percentage = (freckles_area / iris_area) * 100
     print(f"Freckles cover {freckles_percentage:.2f}% of the iris.")
+
+    # Display the result
+    fig, ax = plt.subplots(1, 2, figsize=(16, 7))
+    ax[0].imshow(image)
+    ax[0].set_title('Iris', fontsize=16)
+    ax[0].axis('off')
+    ax[1].imshow(freckles_img)
+    ax[1].set_title('Freckles', fontsize=16)
+    ax[1].axis('off')
+    plt.tight_layout()
+    plt.show()
 
 
 paths = ['iStock-2153124511-696x464.jpg']#, 'miles-research-iris-dataset\G-01-100-4-R.jpg','miles-research-iris-dataset\G-03-064-1-R.jpg', 'miles-research-iris-dataset\I-27-058-2-L.jpg','miles-research-iris-dataset\J-21-064-2-L.jpg', 'miles-research-iris-dataset\K-01-043-1-L.jpg','miles-research-iris-dataset\K-10-101-2-L.jpg']
@@ -141,15 +135,13 @@ for path in paths:
     ax[0].imshow(img_rgb)
     ax[0].set_title('Original Image', fontsize=16)
     ax[0].axis('off')
-    # Final result
     ax[1].imshow(roi)
     ax[1].set_title('Iris Segmentation', fontsize=16)
     ax[1].axis('off')
-
     plt.tight_layout()
     plt.show()
     
     # Segment freckles and calculate percentual area
-    calculate_eye_freckle_area(roi)
+    calculate_eye_freckle_area(roi, iris_mask)
 
 
