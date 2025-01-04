@@ -7,6 +7,16 @@ from skimage.segmentation import active_contour
 from skimage.draw import polygon
 from scipy.ndimage import label
 
+#C:\Users\Anastasiia\Desktop\urjc\mia\mia_project\miles-research-iris-dataset\C-24-125-2-L.jpg
+#C:\Users\Anastasiia\Desktop\urjc\mia\mia_project\miles-research-iris-dataset\D-34-107-4-L.jpg
+#C:\Users\Anastasiia\Desktop\urjc\mia\mia_project\miles-research-iris-dataset\F-14-084-2-L.jpg
+#miles-research-iris-dataset\G-01-100-4-R.jpg
+#miles-research-iris-dataset\G-03-064-1-R.jpg
+#miles-research-iris-dataset\I-27-058-2-L.jpg
+#miles-research-iris-dataset\J-21-064-2-L.jpg
+#miles-research-iris-dataset\K-01-043-1-L.jpg
+#miles-research-iris-dataset\K-10-101-2-L.jpg
+
 def region_growing(image, seed_point, threshold=10):
     """
     Perform region growing to segment a connected region.
@@ -33,70 +43,72 @@ def region_growing(image, seed_point, threshold=10):
 
     return mask
 
-# Load the image
-img = cv2.imread("iStock-2153124511-696x464.jpg")
-img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert to RGB for correct color display
-img_gray = rgb2gray(img)  # Convert to grayscale for processing
+def get_iris_mask(image, radius=120):
 
-# Adjusted circle size (center and radius for a larger circle)
-rows, cols = img_gray.shape
-center_x, center_y = cols // 2, rows // 2
-radius = 120  # Adjust radius to better match the iris size
+    # Adjusted circle size (center and radius for a larger circle)
+    rows, cols = image.shape
+    center_x, center_y = cols // 2, rows // 2
+    radius = radius  # Adjust radius to better match the iris size
 
-# Initialize the contour
-s = np.linspace(0, 2 * np.pi, 400)
-r = center_y + radius * np.sin(s)
-c = center_x + radius * np.cos(s)
-init = np.array([r, c]).T
+    # Initialize the contour
+    s = np.linspace(0, 2 * np.pi, 400)
+    r = center_y + radius * np.sin(s)
+    c = center_x + radius * np.cos(s)
+    init = np.array([r, c]).T
 
-# Apply the active contour model
-snake = active_contour(
-    gaussian(img_gray, 3, preserve_range=False),  # Apply Gaussian blur
-    init,
-    alpha=0.015,  # Smoothness
-    beta=10,      # Stiffness
-    gamma=0.001,  # Step size
-    max_num_iter=100
-)
+    # Apply the active contour model
+    snake = active_contour(
+        gaussian(image, 3, preserve_range=False),  # Apply Gaussian blur
+        init,
+        alpha=0.015,  # Smoothness
+        beta=10,      # Stiffness
+        gamma=0.001,  # Step size
+        max_num_iter=100
+    )
 
-# Create a mask for the iris
-iris_mask = np.zeros_like(img_gray, dtype=np.uint8)
-rr, cc = polygon(snake[:, 0], snake[:, 1], iris_mask.shape)
-iris_mask[rr, cc] = 1
+    # Create a mask for the iris
+    iris_mask = np.zeros_like(image, dtype=np.uint8)
+    rr, cc = polygon(snake[:, 0], snake[:, 1], iris_mask.shape)
+    iris_mask[rr, cc] = 1
 
-# Extract the iris region
-iris_region = img_gray * iris_mask
+    # Extract the iris region
+    iris_region = image * iris_mask
 
-# Apply region growing to remove the pupil
-seed_point = (center_y, center_x)  # Approximate center of the pupil
-pupil_mask = region_growing(iris_region, seed_point, threshold=0.1)
+    # Apply region growing to remove the pupil
+    seed_point = (center_y, center_x)  # Approximate center of the pupil
+    pupil_mask = region_growing(iris_region, seed_point, threshold=0.1)
 
-# Replace the pupil with white pixels
-result = img_rgb.copy()
-result[pupil_mask] = [255, 255, 255]  # Set pupil region to white
-result[iris_mask == 0] = [255, 255, 255]  # Set outside the iris to white
+    return iris_mask, pupil_mask
 
-# Display the result
-fig, ax = plt.subplots(1, 3, figsize=(20, 7))
+def calculate_eye_freckle_area():
 
-# Original image with detected boundary
-ax[0].imshow(img_rgb)
-ax[0].plot(init[:, 1], init[:, 0], '--r', lw=3, label='Initial Contour')  # Initial contour
-ax[0].plot(snake[:, 1], snake[:, 0], '-b', lw=3, label='Detected Boundary')  # Final contour
-ax[0].set_title('Original Image with Iris Segmentation', fontsize=16)
-ax[0].legend()
-ax[0].axis('off')
+    return 0
 
-# Iris with pupil mask
-ax[1].imshow(iris_region, cmap='gray')
-ax[1].imshow(pupil_mask, cmap='cool', alpha=0.5)
-ax[1].set_title('Region Growing for Pupil Removal', fontsize=16)
-ax[1].axis('off')
+paths = ['iStock-2153124511-696x464.jpg', 'miles-research-iris-dataset\G-01-100-4-R.jpg','miles-research-iris-dataset\G-03-064-1-R.jpg', 'miles-research-iris-dataset\I-27-058-2-L.jpg','miles-research-iris-dataset\J-21-064-2-L.jpg', 'miles-research-iris-dataset\K-01-043-1-L.jpg','miles-research-iris-dataset\K-10-101-2-L.jpg']
+for path in paths:
+    # Load the image
+    img = cv2.imread(path)
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert to RGB for correct color display
+    img_gray = rgb2gray(img)  # Convert to grayscale for processing
 
-# Final result
-ax[2].imshow(result)
-ax[2].set_title('Final Result: Pupil Removed', fontsize=16)
-ax[2].axis('off')
+    iris_mask, pupil_mask = get_iris_mask(img_gray)
 
-plt.tight_layout()
-plt.show()
+    # Replace the pupil with white pixels
+    result = img_rgb.copy()
+    result[pupil_mask] = [255, 255, 255]  # Set pupil region to white
+    result[iris_mask == 0] = [255, 255, 255]  # Set outside the iris to white
+
+    # Display the result
+    fig, ax = plt.subplots(1, 2, figsize=(8, 6))
+    ax[0].imshow(img_rgb)
+    ax[0].set_title('Original Image', fontsize=16)
+    ax[0].legend()
+    ax[0].axis('off')
+    # Final result
+    ax[1].imshow(result)
+    ax[1].set_title('Iris Segmentation', fontsize=16)
+    ax[1].axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
