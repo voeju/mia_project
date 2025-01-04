@@ -7,9 +7,9 @@ from skimage.segmentation import active_contour
 from skimage.draw import polygon
 from scipy.ndimage import label
 
-#C:\Users\Anastasiia\Desktop\urjc\mia\mia_project\miles-research-iris-dataset\C-24-125-2-L.jpg
-#C:\Users\Anastasiia\Desktop\urjc\mia\mia_project\miles-research-iris-dataset\D-34-107-4-L.jpg
-#C:\Users\Anastasiia\Desktop\urjc\mia\mia_project\miles-research-iris-dataset\F-14-084-2-L.jpg
+#miles-research-iris-dataset\C-24-125-2-L.jpg
+#miles-research-iris-dataset\D-34-107-4-L.jpg
+#iles-research-iris-dataset\F-14-084-2-L.jpg
 #miles-research-iris-dataset\G-01-100-4-R.jpg
 #miles-research-iris-dataset\G-03-064-1-R.jpg
 #miles-research-iris-dataset\I-27-058-2-L.jpg
@@ -80,11 +80,12 @@ def get_iris_mask(image, radius=120):
 
     return iris_mask, pupil_mask
 
+#assuming the input is rgb iris image with all of the other regions set to white
 def calculate_eye_freckle_area():
 
     return 0
 
-paths = ['iStock-2153124511-696x464.jpg', 'miles-research-iris-dataset\G-01-100-4-R.jpg','miles-research-iris-dataset\G-03-064-1-R.jpg', 'miles-research-iris-dataset\I-27-058-2-L.jpg','miles-research-iris-dataset\J-21-064-2-L.jpg', 'miles-research-iris-dataset\K-01-043-1-L.jpg','miles-research-iris-dataset\K-10-101-2-L.jpg']
+paths = ['iStock-2153124511-696x464.jpg']#, 'miles-research-iris-dataset\G-01-100-4-R.jpg','miles-research-iris-dataset\G-03-064-1-R.jpg', 'miles-research-iris-dataset\I-27-058-2-L.jpg','miles-research-iris-dataset\J-21-064-2-L.jpg', 'miles-research-iris-dataset\K-01-043-1-L.jpg','miles-research-iris-dataset\K-10-101-2-L.jpg']
 for path in paths:
     # Load the image
     img = cv2.imread(path)
@@ -99,7 +100,7 @@ for path in paths:
     result[iris_mask == 0] = [255, 255, 255]  # Set outside the iris to white
 
     # Display the result
-    fig, ax = plt.subplots(1, 2, figsize=(8, 6))
+    fig, ax = plt.subplots(1, 2, figsize=(16, 7))
     ax[0].imshow(img_rgb)
     ax[0].set_title('Original Image', fontsize=16)
     ax[0].legend()
