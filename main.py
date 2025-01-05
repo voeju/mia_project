@@ -118,22 +118,54 @@ def calculate_eye_freckle_area(image, iris_mask):
     plt.tight_layout()
     plt.show()
 
+def remove_noise(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-# TODO get rid of artefacts
-paths = ['iStock-2153124511-696x464.jpg']#, 'miles-research-iris-dataset\G-01-100-4-R.jpg','miles-research-iris-dataset\G-03-064-1-R.jpg', 'miles-research-iris-dataset\I-27-058-2-L.jpg','miles-research-iris-dataset\J-21-064-2-L.jpg', 'miles-research-iris-dataset\K-01-043-1-L.jpg','miles-research-iris-dataset\K-10-101-2-L.jpg']
-for path in paths:
-    # Load the image
-    img = cv2.imread(path)
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert to RGB for correct color display
-    img_gray = rgb2gray(img)  # Convert to grayscale for processing
+    # Apply a median blur to reduce noise and smooth the image
+    blurred = cv2.medianBlur(gray, 5)
 
-    # Get iris only image
-    iris_mask = get_iris_mask(img_gray)
-    roi = img_rgb * np.stack([iris_mask] * 3, axis=-1) 
+    # Detect light reflections using thresholding
+    _, mask = cv2.threshold(blurred, 235, 255, cv2.THRESH_BINARY)
+    cv2.imshow("Mask",mask)
+    # Define the kernel for dilation
+    kernel = np.ones((5, 5), np.uint8)
+
+    # Dilate the thresholded image
+    dilated = cv2.dilate(mask, kernel, iterations=3)
+
+    # Inpaint the image using the mask
+    inpainted_image = cv2.inpaint(image, dilated, 10, cv2.INPAINT_TELEA)    
 
     # Display the result
     fig, ax = plt.subplots(1, 2, figsize=(16, 7))
-    ax[0].imshow(img_rgb)
+    ax[0].imshow(image)
+    ax[0].set_title('Original Image', fontsize=16)
+    ax[0].axis('off')
+    ax[1].imshow(inpainted_image)
+    ax[1].set_title('Iris Segmentation', fontsize=16)
+    ax[1].axis('off')
+    plt.tight_layout()
+    plt.show()
+    return inpainted_image
+
+
+paths = ['iStock-2153124511-696x464.jpg', 'miles-research-iris-dataset\G-01-100-4-R.jpg']#,'miles-research-iris-dataset\G-03-064-1-R.jpg', 'miles-research-iris-dataset\I-27-058-2-L.jpg']#,'miles-research-iris-dataset\J-21-064-2-L.jpg', 'miles-research-iris-dataset\K-01-043-1-L.jpg','miles-research-iris-dataset\K-10-101-2-L.jpg']
+for path in paths:
+    # Load the image
+    img = cv2.imread(path)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert to RGB for correct color display
+
+    # Get rid of the light artefacts
+    noiseless_image = remove_noise(img)
+    img_gray = rgb2gray(noiseless_image)  # Convert to grayscale for processing
+
+    # Get iris only image
+    iris_mask = get_iris_mask(img_gray)
+    roi = noiseless_image * np.stack([iris_mask] * 3, axis=-1) 
+
+    # Display the result
+    fig, ax = plt.subplots(1, 2, figsize=(16, 7))
+    ax[0].imshow(img_gray)
     ax[0].set_title('Original Image', fontsize=16)
     ax[0].axis('off')
     ax[1].imshow(roi)
