@@ -81,7 +81,7 @@ def get_iris_mask(image, radius=120):
 
     return iris_mask - pupil_mask
 
-#assuming the input is rgb iris image with all of the other regions set to white
+# TODO polish the result, get rid of false positives
 def calculate_eye_freckle_area(image, iris_mask):
     # Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -119,6 +119,7 @@ def calculate_eye_freckle_area(image, iris_mask):
     plt.show()
 
 
+# TODO get rid of artefacts
 paths = ['iStock-2153124511-696x464.jpg']#, 'miles-research-iris-dataset\G-01-100-4-R.jpg','miles-research-iris-dataset\G-03-064-1-R.jpg', 'miles-research-iris-dataset\I-27-058-2-L.jpg','miles-research-iris-dataset\J-21-064-2-L.jpg', 'miles-research-iris-dataset\K-01-043-1-L.jpg','miles-research-iris-dataset\K-10-101-2-L.jpg']
 for path in paths:
     # Load the image
