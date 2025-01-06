@@ -18,7 +18,7 @@ from scipy.ndimage import label
 #miles-research-iris-dataset\K-10-101-2-L.jpg
 #miles-research-iris-dataset\X-23-165-3-R.jpg
 
-def pupil(image, radius=300):
+def pupil(image, radius=150):
     # Sharpen the edges
     kernel = np.array([[0, -1, 0],
                     [-1, 5,-1],
@@ -28,7 +28,7 @@ def pupil(image, radius=300):
 
     # Adjusted circle size (center and radius for a larger circle)
     rows, cols = image.shape
-    center_x, center_y = cols // 2, rows // 2
+    center_x, center_y = (cols // 2) - 40, rows // 2
     radius = radius  # Adjust radius to better match the pupil size
 
     # Initialize the contour
@@ -39,7 +39,7 @@ def pupil(image, radius=300):
 
     # Apply the active contour model
     snake = active_contour(
-        gaussian(image),  # Apply Gaussian blur to smooth the image
+        image,  # Apply Gaussian blur to smooth the image
         init,
         alpha=0.05,   # Increased smoothness to handle noise
         beta=5,     # Lower stiffness for better boundary conformity
@@ -52,17 +52,19 @@ def pupil(image, radius=300):
     rr, cc = polygon(snake[:, 0], snake[:, 1], pupil_mask.shape)
     pupil_mask[rr, cc] = 1
 
-    return pupil_mask
+    # Make pupil region bigger to get rid of the dark transition region
+    dilation_kernel = np.ones((6, 6), np.uint8)
+    dilated_pupil_mask = cv2.dilate(pupil_mask, dilation_kernel, iterations=2)
 
-
-def get_iris_mask(image, radius=550):
+    return dilated_pupil_mask
+def get_iris_mask(image, radius=500):
     # Sharpen the edges
-    kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+    kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]]) 
     image = cv2.filter2D(image, -1, kernel)
 
     # Initialize the contour
     rows, cols = image.shape
-    center_x, center_y = cols // 2, rows // 2
+    center_x, center_y = (cols // 2) - 40, rows // 2
     s = np.linspace(0, 2 * np.pi, 400)
     r = center_y + radius * np.sin(s)
     c = center_x + radius * np.cos(s)
@@ -88,24 +90,21 @@ def get_iris_mask(image, radius=550):
     iris_only = iris_mask & ~pupil_region
 
     return iris_only
-
-
 def calculate_eye_freckle_area(image, iris_mask):
     # Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Apply Gaussian Blur
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-
     # Apply Otsu's thresholding
-    _, thresholded = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    _, thresholded = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    freckles_area = np.sum(thresholded == 255) - np.sum(iris_mask == 0)
+    cleaned_freckles, mask = clean_result(thresholded, iris_mask)
+
+    freckles_area = np.sum(cleaned_freckles == 255) - np.sum(mask == 0)
     print(f"Total area of white freckles: {freckles_area} pixels")
     freckles_img = image.copy()
-    freckles_img[thresholded == 0] = [0, 0, 0]
+    freckles_img[cleaned_freckles == 0] = [0, 0, 0]
 
-    iris_area = np.sum(iris_mask == 1)
+    iris_area = np.sum(mask == 1)
     print(f"Total area of iris: {iris_area} pixels")
 
     # Calculate percentage
@@ -114,8 +113,8 @@ def calculate_eye_freckle_area(image, iris_mask):
 
     # Display the result
     fig, ax = plt.subplots(1, 2, figsize=(16, 7))
-    ax[0].imshow(image)
-    ax[0].set_title('Iris', fontsize=16)
+    ax[0].imshow(thresholded)
+    ax[0].set_title('Thresholded iris', fontsize=16)
     ax[0].axis('off')
     ax[1].imshow(freckles_img)
     ax[1].set_title('Freckles', fontsize=16)
@@ -151,10 +150,22 @@ def remove_noise(image):
     plt.tight_layout()
     plt.show()
     return inpainted_image
+def clean_result(thresholded_image, mask):
+    # Remove falsely identified freckles
+    dilation_kernel = np.ones((6, 6), np.uint8)
+    erosion_kernel = np.ones((3,3), np.uint8)
+
+    n=2
+    # Erode noise
+    eroded_image = cv2.erode(thresholded_image, erosion_kernel, iterations=n)
+    eroded_mask = cv2.erode(mask, erosion_kernel, iterations=n)
+    # Dilate back the freckles
+    dilated_image = cv2.dilate(eroded_image, dilation_kernel, iterations=n)
+    dilated_mask= cv2.dilate(eroded_mask, dilation_kernel, iterations=n)
+    return dilated_image, dilated_mask
 
 
-
-paths = [r"C:\Users\Roman\Desktop\G-01-100-4-R.jpg",r"C:\Users\Roman\Downloads\G-03-064-1-R.jpg"]  # Add other paths as needed
+paths = ["miles-research-iris-dataset\C-24-125-2-L.jpg","miles-research-iris-dataset\G-01-100-4-R.jpg", "miles-research-iris-dataset\G-03-064-1-R.jpg"]  # Add other paths as needed
 for path in paths:
     # Load the image
     img = cv2.imread(path)
@@ -162,22 +173,26 @@ for path in paths:
 
     # Get rid of the light artifacts
     noiseless_image = remove_noise(img)
-    img_gray = (rgb2gray(noiseless_image) * 255).astype(np.uint8)  # Convert to grayscale and uint8
+    # Sharpen the image
+    kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]]) 
+    sharp_image = cv2.filter2D(noiseless_image, -1, kernel)
+
+    img_gray = (rgb2gray(sharp_image) * 255).astype(np.uint8)  # Convert to grayscale and uint8
 
     # Get iris only image
     iris_mask = get_iris_mask(img_gray)
     roi = noiseless_image * np.stack([iris_mask] * 3, axis=-1)
 
     # Display the result
-    fig, ax = plt.subplots(1, 2, figsize=(16, 7))
-    ax[0].imshow(img_gray, cmap='gray')
-    ax[0].set_title('Original Image', fontsize=16)
-    ax[0].axis('off')
-    ax[1].imshow(roi)
-    ax[1].set_title('Iris Segmentation', fontsize=16)
-    ax[1].axis('off')
-    plt.tight_layout()
-    plt.show()
+    # fig, ax = plt.subplots(1, 2, figsize=(16, 7))
+    # ax[0].imshow(img_gray, cmap='gray')
+    # ax[0].set_title('Original Image', fontsize=16)
+    # ax[0].axis('off')
+    # ax[1].imshow(roi)
+    # ax[1].set_title('Iris Segmentation', fontsize=16)
+    # ax[1].axis('off')
+    # plt.tight_layout()
+    # plt.show()
 
     # Segment freckles and calculate percentual area
     calculate_eye_freckle_area(roi, iris_mask)
