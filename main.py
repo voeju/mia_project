@@ -18,7 +18,7 @@ from scipy.ndimage import label
 #miles-research-iris-dataset\K-10-101-2-L.jpg
 #miles-research-iris-dataset\X-23-165-3-R.jpg
 
-def pupil(image, radius=150):
+def pupil(image, radius=180):
     # Sharpen the edges
     kernel = np.array([[0, -1, 0],
                     [-1, 5,-1],
@@ -28,7 +28,7 @@ def pupil(image, radius=150):
 
     # Adjusted circle size (center and radius for a larger circle)
     rows, cols = image.shape
-    center_x, center_y = (cols // 2) - 40, rows // 2
+    center_x, center_y = (cols // 2) - 50, rows // 2
     radius = radius  # Adjust radius to better match the pupil size
 
     # Initialize the contour
@@ -64,7 +64,7 @@ def get_iris_mask(image, radius=500):
 
     # Initialize the contour
     rows, cols = image.shape
-    center_x, center_y = (cols // 2) - 40, rows // 2
+    center_x, center_y = (cols // 2) - 50, rows // 2
     s = np.linspace(0, 2 * np.pi, 400)
     r = center_y + radius * np.sin(s)
     c = center_x + radius * np.cos(s)
@@ -96,15 +96,16 @@ def calculate_eye_freckle_area(image, iris_mask):
 
     # Apply Otsu's thresholding
     _, thresholded = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    thresholded[iris_mask == 0] = 0 # set background to 0 again
 
-    cleaned_freckles, mask = clean_result(thresholded, iris_mask)
+    cleaned_freckles = clean_result(thresholded)
 
-    freckles_area = np.sum(cleaned_freckles == 255) - np.sum(mask == 0)
+    freckles_area = np.sum(cleaned_freckles == 255)
     print(f"Total area of white freckles: {freckles_area} pixels")
     freckles_img = image.copy()
     freckles_img[cleaned_freckles == 0] = [0, 0, 0]
 
-    iris_area = np.sum(mask == 1)
+    iris_area = np.sum(iris_mask == 1)
     print(f"Total area of iris: {iris_area} pixels")
 
     # Calculate percentage
@@ -150,7 +151,7 @@ def remove_noise(image):
     plt.tight_layout()
     plt.show()
     return inpainted_image
-def clean_result(thresholded_image, mask):
+def clean_result(thresholded_image):
     # Remove falsely identified freckles
     dilation_kernel = np.ones((6, 6), np.uint8)
     erosion_kernel = np.ones((3,3), np.uint8)
@@ -158,11 +159,9 @@ def clean_result(thresholded_image, mask):
     n=2
     # Erode noise
     eroded_image = cv2.erode(thresholded_image, erosion_kernel, iterations=n)
-    eroded_mask = cv2.erode(mask, erosion_kernel, iterations=n)
     # Dilate back the freckles
     dilated_image = cv2.dilate(eroded_image, dilation_kernel, iterations=n)
-    dilated_mask= cv2.dilate(eroded_mask, dilation_kernel, iterations=n)
-    return dilated_image, dilated_mask
+    return dilated_image
 
 
 paths = ["miles-research-iris-dataset\C-24-125-2-L.jpg","miles-research-iris-dataset\G-01-100-4-R.jpg", "miles-research-iris-dataset\G-03-064-1-R.jpg"]  # Add other paths as needed
